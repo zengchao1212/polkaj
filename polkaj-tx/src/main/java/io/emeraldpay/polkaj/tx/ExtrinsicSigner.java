@@ -41,7 +41,7 @@ public class ExtrinsicSigner<CALL extends ExtrinsicCall> {
         return getPayload(ctx, call, true);
     }
 
-    protected byte[] getPayload(ExtrinsicContext ctx, CALL call, boolean asList) throws SignException {
+    public byte[] getPayload(ExtrinsicContext ctx, CALL call, boolean asList) throws SignException {
         ByteArrayOutputStream result = new ByteArrayOutputStream();
         try (ScaleCodecWriter writer = new ScaleCodecWriter(result)) {
             writer.write(asList ? codecAsList : codec, new SignaturePayload<>(ctx, call));

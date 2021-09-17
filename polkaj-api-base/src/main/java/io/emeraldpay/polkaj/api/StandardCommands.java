@@ -121,10 +121,6 @@ public class StandardCommands {
         return RpcCall.create(ByteData.class, PolkadotMethod.STATE_GET_METADATA);
     }
 
-    /**
-     * Request runtime metadata of the current node
-     * @return command
-     */
     public RpcCall<ByteData> stateMetadata(Hash256 hash) {
         return RpcCall.create(ByteData.class, PolkadotMethod.STATE_GET_METADATA,hash);
     }
