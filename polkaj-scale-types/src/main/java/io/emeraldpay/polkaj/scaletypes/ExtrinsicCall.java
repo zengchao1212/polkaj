@@ -10,7 +10,7 @@ import java.util.Objects;
  * @see Metadata.Module
  * @see Metadata.Call
  */
-public abstract class ExtrinsicCall {
+public class ExtrinsicCall {
 
     /**
      * Module index in metadata

@@ -6,7 +6,6 @@ dependencies {
     api project(":polkaj-json-types")
     api project(":polkaj-ss58")
     api project(":polkaj-api-base")
-    api project(":polkaj-api-http")
 
     // for xxHash
     api 'net.openhft:zero-allocation-hashing:0.11'

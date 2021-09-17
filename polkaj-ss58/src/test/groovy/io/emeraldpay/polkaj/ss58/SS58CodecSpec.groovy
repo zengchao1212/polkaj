@@ -1,6 +1,5 @@
 package io.emeraldpay.polkaj.ss58
 
-import io.ipfs.multibase.Base58
 import org.apache.commons.codec.binary.Hex
 import spock.lang.Specification
 

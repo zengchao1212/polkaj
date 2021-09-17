@@ -253,7 +253,6 @@ public class AccountRequests {
             Extrinsic.TransactionInfo tx = new Extrinsic.TransactionInfo();
             tx.setNonce(this.nonce);
             tx.setSender(this.from);
-            tx.setSignature(buildSignature(this.signature));
             tx.setTip(this.tip);
 
             Extrinsic<BalanceTransfer> extrinsic = new Extrinsic<>();

@@ -3,27 +3,26 @@ package io.emeraldpay.polkaj.apihttp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.emeraldpay.polkaj.api.*;
+import io.emeraldpay.polkaj.api.AbstractPolkadotApi;
+import io.emeraldpay.polkaj.api.RpcCall;
+import io.emeraldpay.polkaj.api.RpcException;
 import io.emeraldpay.polkaj.json.jackson.PolkadotModule;
+import okhttp3.*;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Default JSON RPC HTTP client for Polkadot API. It uses Java 11 HttpClient implementation for requests.
  * Each request made from that client has a uniq id, from a monotone sequence starting on 0. A new instance is
- * supposed to be create through {@link JavaHttpAdapter#newBuilder()}:
+ * supposed to be create through {@link PolkadotHttpApi#newBuilder()}:
  * <br>
- * The class is AutoCloseable, with {@link JavaHttpAdapter#close()} methods, which shutdown a thread (or threads) used for http requests.
+ * The class is AutoCloseable, with {@link PolkadotHttpApi#close()} methods, which shutdown a thread (or threads) used for http requests.
  *
  * <br>
  * Example:
@@ -33,23 +32,21 @@ import java.util.concurrent.Executors;
  * System.out.println("Current head: " + hash.get());
  * </code></pre>
  */
-public class JavaHttpAdapter implements RpcCallAdapter {
+public class PolkadotHttpApi extends AbstractPolkadotApi implements AutoCloseable {
 
     private static final String APPLICATION_JSON = "application/json";
 
-    private final HttpClient httpClient;
-    private final HttpRequest.Builder request;
-    private final Runnable onClose;
-    private final RpcCoder rpcCoder;
-
+    private final OkHttpClient httpClient;
+    private final Request.Builder request;
     private boolean closed = false;
 
-    private JavaHttpAdapter(URI target, HttpClient httpClient, String basicAuth, Duration timeout, Runnable onClose, RpcCoder rpcCoder) {
+    private PolkadotHttpApi(String target, OkHttpClient httpClient, String basicAuth,ObjectMapper objectMapper) {
+        super(objectMapper);
         this.httpClient = httpClient;
 
-        HttpRequest.Builder request = HttpRequest.newBuilder()
-                .uri(target)
-                .timeout(timeout)
+        Request.Builder request = new Request.Builder()
+                .url(target)
+//                .timeout(Duration.ofMinutes(1))
                 .header("User-Agent", "Polkaj/0.3") //TODO generate version during compilation
                 .header("Content-Type", APPLICATION_JSON);
 
@@ -58,8 +55,6 @@ public class JavaHttpAdapter implements RpcCallAdapter {
         }
 
         this.request = request;
-        this.onClose = onClose;
-        this.rpcCoder = rpcCoder;
     }
 
     /**
@@ -71,28 +66,27 @@ public class JavaHttpAdapter implements RpcCallAdapter {
      * @see RpcException
      */
     @Override
-    public <T> CompletableFuture<T> produceRpcFuture(RpcCall<T> call) {
+    public <T> CompletableFuture<T> execute(RpcCall<T> call) {
         if (closed) {
-            return CompletableFuture.failedFuture(
-                    new IllegalStateException("Client is already closed")
-            );
+            throw new IllegalStateException("Client is already closed");
         }
-        final ObjectMapper objectMapper = rpcCoder.getObjectMapper();
-        int id = rpcCoder.nextId();
+        int id = nextId();
         JavaType type = call.getResultType(objectMapper.getTypeFactory());
         try {
-            HttpRequest.Builder request = this.request.copy()
-                    .POST(HttpRequest.BodyPublishers.ofByteArray(rpcCoder.encode(id, call)));
-            return httpClient.sendAsync(request.build(), HttpResponse.BodyHandlers.ofString())
-                    .thenApply(this::verify)
-                    .thenApply(HttpResponse::body)
-                    .thenApply(content -> rpcCoder.decode(id, content, type));
+            Request.Builder request = this.request
+                    .post(RequestBody.create(MediaType.parse(APPLICATION_JSON),encode(id, call.getMethod(), call.getParams())));
+
+            return CompletableFuture.supplyAsync(()->{
+                try {
+                    Response response = httpClient.newCall(request.build()).execute();
+                    return decode(id,verify(response).body().string(),type);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+//
         } catch (JsonProcessingException e) {
-            return CompletableFuture.failedFuture(
-                    new RpcException(-32600, "Unable to encode request as JSON: " + e.getMessage(), e)
-            );
-        } catch (CompletionException e){
-            return CompletableFuture.failedFuture(e);
+            throw new RpcException(-32600, "Unable to encode request as JSON: " + e.getMessage(), e);
         }
     }
 
@@ -105,16 +99,26 @@ public class JavaHttpAdapter implements RpcCallAdapter {
      * @see CompletionException
      * @see RpcException
      */
-    public HttpResponse<String> verify(HttpResponse<String> response) {
-        if (response.statusCode() != 200) {
-            throw new CompletionException(
-                    new RpcException(-32000, "Server returned error status: " + response.statusCode())
-            );
+    public Response verify(Response response) {
+        if (response.code() != 200) {
+            try {
+                String body=response.body().string();
+                throw new CompletionException(
+                        new RpcException(-32000, "Server returned error status: " + response.code()+" with message "+body)
+                );
+            } catch (IOException e) {
+                throw new CompletionException(
+                        new RpcException(-32000, "Server returned error status: " + response.code())
+                );
+            }
+
+
         }
         //response shouldn't contain non-ascii so charset can be ignored
-        if (!response.headers().firstValue("content-type").orElse(APPLICATION_JSON).startsWith(APPLICATION_JSON)) {
+        String contentType=response.headers().get("content-type");
+        if (Objects.nonNull(contentType) && !contentType.startsWith(APPLICATION_JSON)) {
             throw new CompletionException(
-                    new RpcException(-32000, "Server returned invalid content-type: " + response.headers().firstValue("content-type"))
+                    new RpcException(-32000, "Server returned invalid content-type: " + contentType)
             );
         }
         return response;
@@ -130,13 +134,6 @@ public class JavaHttpAdapter implements RpcCallAdapter {
             return;
         }
         closed = true;
-        if (onClose != null) {
-            try {
-                onClose.run();
-            } catch (Throwable t) {
-                System.err.println("Error during onClose call: " + t.getMessage());
-            }
-        }
     }
 
     /**
@@ -144,18 +141,17 @@ public class JavaHttpAdapter implements RpcCallAdapter {
      * a standard Java HttpClient without any authorization connecting to localhost:9933 and using
      * a new instance of a Jackson ObjectMapper with PolkadotModule enabled.
      *
-     * @see JavaHttpAdapter
-     * @see HttpClient
+     * @see PolkadotHttpApi
+     * @see OkHttpClient
      * @see PolkadotModule
      */
     public static class Builder {
-        private URI target;
-        private ExecutorService executorService;
+        private String target;
         private String basicAuth;
-        private HttpClient httpClient;
-        private RpcCoder rpcCoder;
-        private Runnable onClose;
+        private OkHttpClient httpClient;
+        private ObjectMapper objectMapper;
         private Duration timeout;
+
 
         /**
          * Setup Basic Auth for RPC calls
@@ -174,19 +170,8 @@ public class JavaHttpAdapter implements RpcCallAdapter {
          *
          * @param target URL
          * @return builder
-         * @throws URISyntaxException if specified url is invalid
          */
-        public Builder connectTo(String target) throws URISyntaxException {
-            return this.connectTo(new URI(target));
-        }
-
-        /**
-         * Server address URL
-         *
-         * @param target URL
-         * @return builder
-         */
-        public Builder connectTo(URI target) {
+        public Builder connectTo(String target) {
             this.httpClient = null;
             this.target = target;
             return this;
@@ -198,36 +183,19 @@ public class JavaHttpAdapter implements RpcCallAdapter {
          * @param httpClient client
          * @return builder
          */
-        public Builder httpClient(HttpClient httpClient) {
-            if (this.executorService != null) {
-                throw new IllegalStateException("Custom HttpClient cannot be used with separate Executor");
-            }
+        public Builder httpClient(OkHttpClient httpClient) {
             this.httpClient = httpClient;
             return this;
         }
 
         /**
-         * Provide a custom ExecutorService to run http calls by default HttpClient
+         * Provide a custom ObjectMapper that will be used to encode/decode request and responses.
          *
-         * @param executorService executor
+         * @param objectMapper ObjectMapper
          * @return builder
          */
-        public Builder executor(ExecutorService executorService) {
-            if (this.httpClient != null) {
-                throw new IllegalStateException("Custom HttpClient cannot be used with separate Executor");
-            }
-            this.executorService = executorService;
-            return this;
-        }
-
-        /**
-         * Provide custom cleanup method.
-         *
-         * @param onClose to be called on close.
-         * @return builder
-         */
-        public Builder onClose(Runnable onClose){
-            this.onClose = onClose;
+        public Builder objectMapper(ObjectMapper objectMapper) {
+            this.objectMapper = objectMapper;
             return this;
         }
 
@@ -242,46 +210,16 @@ public class JavaHttpAdapter implements RpcCallAdapter {
             return this;
         }
 
-        /**
-         * Provide a custom RpcCoder for rpc serialization.
-         *
-         * @param rpcCoder rpcCoder
-         * @return builder
-         */
-        public JavaHttpAdapter.Builder rpcCoder(RpcCoder rpcCoder){
-            this.rpcCoder = rpcCoder;
-            return this;
-        }
-
-        private void initDefaults() {
-            if (rpcCoder == null) {
-                final ObjectMapper objectMapper = new ObjectMapper();
-                objectMapper.registerModule(new PolkadotModule());
-                rpcCoder = new RpcCoder(objectMapper);
-            }
-
+        protected void initDefaults() {
             if (httpClient == null && target == null) {
-                try {
-                    connectTo("http://127.0.0.1:9933");
-                } catch (URISyntaxException e) { }
+                connectTo("http://127.0.0.1:9933");
             }
-
-            if (executorService == null) {
-                ExecutorService executorService = Executors.newCachedThreadPool();
-                this.executorService = executorService;
-                onClose = executorService::shutdown;
+            if (objectMapper == null) {
+                objectMapper = new ObjectMapper();
+                objectMapper.registerModule(new PolkadotModule());
             }
-
             if (timeout == null) {
                 timeout = Duration.ofMinutes(1);
-            }
-
-            if (this.httpClient == null) {
-                httpClient = HttpClient.newBuilder()
-                        .version(HttpClient.Version.HTTP_2)
-                        .executor(executorService)
-                        .followRedirects(HttpClient.Redirect.NEVER)
-                        .build();
             }
         }
 
@@ -290,9 +228,19 @@ public class JavaHttpAdapter implements RpcCallAdapter {
          *
          * @return new instance of PolkadotRpcClient
          */
-        public JavaHttpAdapter build() {
+        public PolkadotHttpApi build() {
             initDefaults();
-            return new JavaHttpAdapter(target, httpClient, basicAuth, timeout, onClose, rpcCoder);
+
+            if (this.httpClient == null) {
+                httpClient = new OkHttpClient.Builder()
+                        .callTimeout(Duration.ofSeconds(2))
+                        .readTimeout(Duration.ofSeconds(2))
+                        .connectTimeout(Duration.ofSeconds(2))
+                        .connectionPool(new ConnectionPool(10,5, TimeUnit.MINUTES))
+                        .build();
+            }
+
+            return new PolkadotHttpApi(target, httpClient, basicAuth, objectMapper);
         }
 
     }
