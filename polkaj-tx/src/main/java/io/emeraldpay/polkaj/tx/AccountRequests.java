@@ -16,8 +16,6 @@ import io.emeraldpay.polkaj.scaletypes.BalanceTransferWriter;
 import io.emeraldpay.polkaj.scaletypes.Extrinsic;
 import io.emeraldpay.polkaj.scaletypes.ExtrinsicWriter;
 import io.emeraldpay.polkaj.scaletypes.Metadata;
-import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
-import io.emeraldpay.polkaj.ss58.SS58Type;
 import io.emeraldpay.polkaj.types.Address;
 import io.emeraldpay.polkaj.types.ByteData;
 import io.emeraldpay.polkaj.types.DotAmount;
@@ -217,7 +215,6 @@ public class AccountRequests {
 
         /**
          * (optional) Set once, if setting a predefined signature.
-         * Otherwise, nonce is set during {@link #sign} operation
          *
          * @param nonce once to use
          * @return builder
@@ -229,7 +226,6 @@ public class AccountRequests {
 
         /**
          * (optional) Set once provided with the context, if setting a presefined signature.
-         * Otherwise nonce is set during {@link #sign} operation
          *
          * @param context context with once to use
          * @return builder
@@ -239,7 +235,7 @@ public class AccountRequests {
         }
 
         /**
-         * Set a predefined signature. Either this method, or {@link #sign} must be called
+         * Set a predefined signature. Either this method
          *
          * @param signature precalculated signature
          * @return builder
@@ -247,31 +243,6 @@ public class AccountRequests {
         public TransferBuilder signed(Extrinsic.Signature signature) {
             this.signature = signature;
             return this;
-        }
-
-        /**
-         * Sign the transfer
-         *
-         * @param key sender key pair
-         * @param context signing context
-         * @return builder
-         * @throws SignException if signing is failed
-         * @throws IllegalStateException on data conflict
-         */
-        public TransferBuilder sign(Schnorrkel.KeyPair key, ExtrinsicContext context) throws SignException {
-            if (this.nonce != null && this.nonce != context.getNonce()) {
-                throw new IllegalStateException("Trying to sign with context with different nonce. Reset nonce, or provide the same value");
-            }
-            if (this.from != null) {
-                if (!Arrays.equals(this.from.getPubkey(), key.getPublicKey())) {
-                    throw new SignException("Cannot sign transfer from " + this.from + " by pubkey of " + new Address(this.from.getNetwork(), key.getPublicKey()));
-                }
-            } else {
-                this.from = new Address(SS58Type.Network.LIVE, key.getPublicKey());
-            }
-            ExtrinsicSigner<BalanceTransfer> signer = new ExtrinsicSigner<>(new BalanceTransferWriter());
-            return this.nonce(context)
-                    .signed(new Extrinsic.SR25519Signature(signer.sign(context, this.call, key)));
         }
 
         /**
