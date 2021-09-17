@@ -1,6 +1,6 @@
 package io.emeraldpay.polkaj.ss58;
 
-import io.ipfs.multibase.Base58;
+import org.bitcoinj.core.Base58;
 import org.bouncycastle.jcajce.provider.digest.Blake2b;
 
 /**

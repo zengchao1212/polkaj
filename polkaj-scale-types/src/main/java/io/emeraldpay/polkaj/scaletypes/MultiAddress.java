@@ -35,7 +35,6 @@ public abstract class MultiAddress {
      *
      * @param type a valid MultiAddress.Type constant
      * @param value concrete MultiAddress instance
-     * @return
      */
     public static UnionValue<MultiAddress> from(int type, MultiAddress value) {
         return new UnionValue<>(type, value);
