@@ -1,11 +1,9 @@
 package io.emeraldpay.polkaj.tx;
 
 import io.emeraldpay.polkaj.types.Address;
-import net.openhft.hashing.LongHashFunction;
 import org.bouncycastle.crypto.digests.Blake2bDigest;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /**
  * <ul>
@@ -15,24 +13,6 @@ import java.nio.ByteOrder;
  * </ul>
  */
 public class Hashing {
-
-    /**
-     * Hash with xxhash algorithm. Produces 128 bits output. The xxhash by default gives only 64 bytes, so
-     * the xxhash128 applies it twice with seed 0 and seed 1
-     *
-     * @param buf buffer to put the result
-     * @param value string to hash
-     */
-    public static void xxhash128(ByteBuffer buf, String value) {
-        byte[] valueBytes = value.getBytes();
-        ByteOrder oder = buf.order();
-        buf.order(ByteOrder.LITTLE_ENDIAN);
-        buf.asLongBuffer()
-                .put(LongHashFunction.xx(0).hashBytes(valueBytes))
-                .put(LongHashFunction.xx(1).hashBytes(valueBytes));
-        buf.position(buf.position() + 16);
-        buf.order(oder);
-    }
 
     /**
      * Hash with Blake2 256 bit
