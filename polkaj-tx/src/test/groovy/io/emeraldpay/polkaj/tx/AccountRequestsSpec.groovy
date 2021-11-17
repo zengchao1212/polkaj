@@ -13,7 +13,7 @@ class AccountRequestsSpec extends Specification {
 
     def "Prepare issuance request"() {
         when:
-        def req = AccountRequests.totalIssuance()
+        def req = BalanceModule.totalIssuance()
         def act = Hex.encodeHexString(req.encodeRequest().bytes)
         then:
         act == "c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80"
@@ -21,7 +21,7 @@ class AccountRequestsSpec extends Specification {
 
     def "Decode issuance response"() {
         when:
-        def req = AccountRequests.totalIssuance()
+        def req = BalanceModule.totalIssuance()
         def act = req.apply(ByteData.from("0xf70af5f6f3c843050000000000000000"))
         then:
         act == DotAmount.fromPlancks("379367743775116023")
@@ -29,7 +29,7 @@ class AccountRequestsSpec extends Specification {
 
     def "Prepare balance request"() {
         when:
-        def req = AccountRequests.balanceOf(Address.from("1WG3jyNqniQMRZGQUc7QD2kVLT8hkRPGMSqAb5XYQM1UDxN"))
+        def req = BalanceModule.balanceOf(Address.from("1WG3jyNqniQMRZGQUc7QD2kVLT8hkRPGMSqAb5XYQM1UDxN"))
         def act = Hex.encodeHexString(req.encodeRequest().bytes)
         then:
         act == "26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9762b7694480fb50358c23ab18950158b1650c532ed1a8641e8922aa24ade0ff411d03edd9ed1c6b7fe42f1a801cee37c"
@@ -37,7 +37,7 @@ class AccountRequestsSpec extends Specification {
 
     def "Decode balance response"() {
         setup:
-        def req = AccountRequests.balanceOf(Address.from("1WG3jyNqniQMRZGQUc7QD2kVLT8hkRPGMSqAb5XYQM1UDxN"))
+        def req = BalanceModule.balanceOf(Address.from("1WG3jyNqniQMRZGQUc7QD2kVLT8hkRPGMSqAb5XYQM1UDxN"))
         def result = ByteData.from("0x11000000030000000400000005000000f70af5f6f3c843050000000000000000000000000000000000000000000000000000c52ebca2b10000000000000000000000c52ebca2b1000000000000000000")
         when:
         def act = req.apply(result)
@@ -56,7 +56,7 @@ class AccountRequestsSpec extends Specification {
 
     def "Encode transfer"() {
         when:
-        def transfer = AccountRequests.transfer()
+        def transfer = BalanceModule.transfer()
             .module(5, 0)
             .from(Address.from("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"))
             .to(Address.from("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"))
@@ -71,7 +71,7 @@ class AccountRequestsSpec extends Specification {
 
      def "Encode transfer_keep_alive"() {
         when:
-        def transfer = AccountRequests.transferKeepAlive()
+        def transfer = BalanceModule.transferKeepAlive()
             .module(4, 3)
             .from(Address.from("5FqBfbPzAD8v8M3XQQEixXJW7HmXZ8JLqLfibxj8zjuPkipz"))
             .to(Address.from("5GAiqfv7kwGxnLpCue9pFt7zwt4u1aoYM7p9tHJPGMjNHpEz"))
@@ -93,7 +93,7 @@ class AccountRequestsSpec extends Specification {
                 .genesis(Hash256.from("0x4c0bdd177c17ca145ad9a3e76d092d4d4baa8add4fa8c78cc2fbbf8e3cbd5122"))
                 .nonce(1234567890)
                 .build()
-        def transfer = AccountRequests.transfer()
+        def transfer = BalanceModule.transfer()
                 .module(5, 0)
                 .from(Address.from("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"))
                 .to(Address.from("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"))

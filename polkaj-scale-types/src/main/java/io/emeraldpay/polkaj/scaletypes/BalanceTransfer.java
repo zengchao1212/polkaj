@@ -20,38 +20,8 @@ public class BalanceTransfer extends ExtrinsicCall {
      */
     private DotAmount balance;
 
-    public BalanceTransfer() {
-        super();
-    }
-
-    public BalanceTransfer(int moduleIndex, int callIndex) {
-        super(moduleIndex, callIndex);
-    }
-
-    public BalanceTransfer(Metadata metadata) {
-        this();
-        init(metadata);
-    }
-
-    /**
-     * Initialize call index from Runtime Metadata
-     *
-     * @param metadata current Runtime
-     */
-    public void init(Metadata metadata) {
-        init(metadata, "transfer");
-    }
-
-    /**
-     * Initialize call index for given call of the Balance module from Runtime Metadata
-     *
-     * @param metadata current Runtime
-     * @param callName name of the call to execute, e.g. transfer, transfer_keep_alive, or transfer_all
-     */
-    public void init(Metadata metadata, String callName) {
-        Metadata.Call call = metadata.findCall("Balances", callName)
-                .orElseThrow(() -> new IllegalStateException("Call 'Balances." + callName + "' doesn't exist"));
-        init(call);
+    public BalanceTransfer(int callIndex) {
+        super(5, callIndex);
     }
 
     public UnionValue<MultiAddress> getDestination() {

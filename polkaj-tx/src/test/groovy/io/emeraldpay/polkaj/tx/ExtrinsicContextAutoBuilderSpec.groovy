@@ -13,7 +13,7 @@ class ExtrinsicContextAutoBuilderSpec extends Specification {
 
     def "Build all from api"() {
         setup:
-        AccountRequests.AddressBalance requestAccount = AccountRequests.balanceOf(TestKeys.alice);
+        BalanceModule.AddressBalance requestAccount = BalanceModule.balanceOf(TestKeys.alice);
         def api = Mock(PolkadotApi) {
             1 * execute(
                     StandardCommands.getInstance().stateGetStorage(requestAccount.encodeRequest())

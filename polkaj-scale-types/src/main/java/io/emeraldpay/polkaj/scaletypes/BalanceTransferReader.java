@@ -18,9 +18,8 @@ public class BalanceTransferReader implements ScaleReader<BalanceTransfer> {
 
     @Override
     public BalanceTransfer read(ScaleCodecReader rdr) {
-        BalanceTransfer result = new BalanceTransfer();
-        result.setModuleIndex(rdr.readUByte());
-        result.setCallIndex(rdr.readUByte());
+        rdr.readUByte();
+        BalanceTransfer result = new BalanceTransfer(rdr.readUByte());
         result.setDestination(rdr.read(destinationReader));
         result.setBalance(new DotAmount(rdr.read(ScaleCodecReader.COMPACT_BIGINT), network));
         return result;
