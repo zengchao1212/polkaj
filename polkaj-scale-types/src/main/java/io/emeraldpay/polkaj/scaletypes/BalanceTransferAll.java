@@ -10,6 +10,7 @@ public class BalanceTransferAll extends ExtrinsicCall{
 
     public BalanceTransferAll(){
         super(5,4);
+        this.keepAlive=false;
     }
 
     public UnionValue<MultiAddress> getDestination() {

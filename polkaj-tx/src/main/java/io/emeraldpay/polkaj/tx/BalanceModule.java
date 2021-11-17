@@ -193,6 +193,7 @@ public class BalanceModule {
         }
     }
 
+
     public static class TransferAllBuilder {
         private Address from;
         private Long nonce;
@@ -226,6 +227,11 @@ public class BalanceModule {
          */
         public TransferAllBuilder to(Address to) {
             this.call.setDestination(to);
+            return this;
+        }
+
+        public TransferAllBuilder keepAlive(Boolean keepAlive) {
+            this.call.setKeepAlive(keepAlive);
             return this;
         }
 
