@@ -25,7 +25,7 @@ subprojects {
         repositories {
             mavenDeployer {
                 repository(url: "https://packages.aliyun.com/maven/repository/2104139-release-rt8uy2/") {
-                    authentication(userName: "Q11OTK", password: "nEsYkz8O0S")
+                    authentication(userName: "******", password: "******")
                 }
                 pom.groupId = "$project.group"
                 pom.artifactId = "$project.archivesBaseName"
