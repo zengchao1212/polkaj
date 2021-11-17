@@ -56,9 +56,6 @@ public abstract class MultiAddress {
             return address;
         }
 
-        /**
-         * Transforms a standard Address object into a fully wrapped MultiAddress UnionValue
-         */
         public static UnionValue<MultiAddress> from(Address address) {
             return MultiAddress.from(Type.ID.getCode(), new AccountID(address));
         }

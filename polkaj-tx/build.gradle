@@ -4,8 +4,4 @@ dependencies {
     api project(":polkaj-common-types")
     api project(":polkaj-scale-types")
     api project(":polkaj-ss58")
-
-    // for xxHash
-    api 'net.openhft:zero-allocation-hashing:0.11'
-//    api 'org.bouncycastle:bcprov-jdk15on:1.65'
 }

@@ -1,65 +1,58 @@
-buildscript {
-
-    dependencies {
-        classpath 'com.netflix.nebula:gradle-aggregate-javadocs-plugin:3.0.1'
-    }
-}
-
-plugins {
-    id "com.jfrog.bintray" version "1.8.4"
-}
-
-// gradle aggregateJavadoc
-apply plugin: 'nebula-aggregate-javadocs'
-apply plugin: 'jacoco'
-
 allprojects {
     group = 'io.emeraldpay.polkaj'
-    version = "0.5.0-SNAPSHOT"
+    version = "1.2"
 
     repositories {
-        mavenLocal()
         mavenCentral()
-        jcenter()
-        maven { url 'https://oss.jfrog.org/artifactory/repo' }
-        //for java-multibase
-        maven { url 'https://jitpack.io' }
-    }
-
-}
-
-jacoco {
-    toolVersion = "0.8.5"
-}
-
-task coverageReport(type: JacocoReport) {
-    executionData.setFrom project.fileTree(dir: '.', include: '**/build/jacoco/test.exec')
-    reports {
-        html.enabled true
-        xml.enabled true
-        csv.enabled false
     }
 }
 
-task syncJars(type: Sync) {
-    allprojects { p ->
-        from p.tasks.withType(Jar)
-    }
-    into "${buildDir}/libs/"
-}
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'java-library'
+    apply plugin: 'maven'
+    apply plugin: 'maven-publish'
 
-// Skip Bintray for the root module
-bintray {
-    dryRun=true
-    publish=false
-    override=true
-    publications = []
-    configurations = []
-    pkg {
-        repo = 'none'
-        name = 'none'
-        version {
-            name = 'none'
+    targetCompatibility = '8'
+    sourceCompatibility = '8'
+
+    [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+    compileJava.options.compilerArgs \
+        << '-Xlint:unchecked' << '-Xlint:deprecation'
+
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                repository(url: "https://packages.aliyun.com/maven/repository/2104139-release-rt8uy2/") {
+                    authentication(userName: "Q11OTK", password: "nEsYkz8O0S")
+                }
+                pom.groupId = "$project.group"
+                pom.artifactId = "$project.archivesBaseName"
+                pom.version = "$project.version"
+            }
         }
     }
+    test {
+        scanForTestClasses = false
+        ignoreFailures = true
+        exclude '**/*'
+    }
+
+
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        classifier = 'sources'
+        from sourceSets.main.allSource
+    }
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+        classifier = 'javadoc'
+        from javadoc.destinationDir
+    }
+
+    artifacts {
+        archives sourcesJar
+        archives javadocJar
+    }
+
 }

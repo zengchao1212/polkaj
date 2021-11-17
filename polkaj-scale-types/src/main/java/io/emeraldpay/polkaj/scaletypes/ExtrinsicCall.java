@@ -6,21 +6,16 @@ import java.util.Objects;
  * Base definitions for Extrinsic Calls.
  * Contains reference to a runtime function, with module index + function index on that module.
  *
- * @see Metadata
- * @see Metadata.Module
- * @see Metadata.Call
  */
 public class ExtrinsicCall {
 
     /**
      * Module index in metadata
-     * @see Metadata.Module
      */
     private int moduleIndex;
 
     /**
      * Call index in module
-     * @see Metadata.Call
      */
     private int callIndex;
 
@@ -31,21 +26,6 @@ public class ExtrinsicCall {
         this();
         this.moduleIndex = moduleIndex;
         this.callIndex = callIndex;
-    }
-
-    public ExtrinsicCall(Metadata.Call call) {
-        this();
-        init(call);
-    }
-
-    /**
-     * Initialize call index from Runtime Metadata
-     *
-     * @param call Call details on current Runtime
-     */
-    public void init(Metadata.Call call) {
-        setModuleIndex(call.getIndex() >> 8);
-        setCallIndex(call.getIndex() & 0xff);
     }
 
     public int getModuleIndex() {

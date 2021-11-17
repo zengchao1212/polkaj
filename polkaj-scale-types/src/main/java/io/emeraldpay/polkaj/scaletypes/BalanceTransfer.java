@@ -1,74 +1,30 @@
 package io.emeraldpay.polkaj.scaletypes;
 
-import java.util.Objects;
-
+import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.UnionValue;
 import io.emeraldpay.polkaj.types.Address;
-import io.emeraldpay.polkaj.types.DotAmount;
 
-/**
- * Call to transfer [part of] balance to another address
- */
-public class BalanceTransfer extends ExtrinsicCall {
+import java.io.IOException;
 
-    /**
-     * Destination address
-     */
-    private UnionValue<MultiAddress> destination;
-    /**
-     * Balance to transfer
-     */
-    private DotAmount balance;
+public abstract class BalanceTransfer extends ExtrinsicCall{
 
-    public BalanceTransfer(int callIndex) {
-        super(5, callIndex);
+    protected UnionValue<MultiAddress> destination;
+
+    public BalanceTransfer(int callIndex, Address destination){
+        super(5,callIndex);
+        this.destination=MultiAddress.AccountID.from(destination);
     }
 
     public UnionValue<MultiAddress> getDestination() {
         return destination;
     }
 
-    public void setDestination(UnionValue<MultiAddress> destination) {
-        this.destination = destination;
+    public void write(ScaleCodecWriter wrt) throws IOException {
+        wrt.writeByte(getModuleIndex());
+        wrt.writeByte(getCallIndex());
+        wrt.write(new MultiAddressWriter(), destination);
+        internalWrite(wrt);
     }
 
-    public void setDestination(Address destination) {
-        this.destination = MultiAddress.AccountID.from(destination);
-    }
-
-    public DotAmount getBalance() {
-        return balance;
-    }
-
-    public void setBalance(DotAmount balance) {
-        this.balance = balance;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof BalanceTransfer)) return false;
-        if (!super.equals(o)) return false;
-        BalanceTransfer that = (BalanceTransfer) o;
-        return Objects.equals(destination, that.destination) &&
-                Objects.equals(balance, that.balance);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), destination, balance);
-    }
-
-    @Override
-    public boolean canEquals(Object o) {
-        return (o instanceof BalanceTransfer);
-    }
-
-    @Override
-    public String toString() {
-        return "BalanceTransfer{" +
-                "destination=" + destination +
-                ", balance=" + balance +
-                '}';
-    }
+    public abstract void internalWrite(ScaleCodecWriter wrt) throws IOException;
 }

@@ -1,5 +1,5 @@
 apply from: '../common_java_app.gradle'
 
 dependencies {
-    api 'org.bitcoinj:bitcoinj-core:0.15.8'
+    api 'org.bouncycastle:bcprov-jdk15to18:1.68'
 }

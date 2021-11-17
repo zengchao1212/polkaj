@@ -33,16 +33,18 @@ public class BalanceModule {
         return new TransferKeepAliveBuilder();
     }
 
+    public static TransferAllBuilder transferAll() {
+        return new TransferAllBuilder();
+    }
 
-
-    public static class Transfer implements ExtrinsicRequest {
+    public static class BalanceTransferRequest implements ExtrinsicRequest {
         private static final ExtrinsicWriter<BalanceTransfer> CODEC = new ExtrinsicWriter<>(
                 new BalanceTransferWriter()
         );
 
         private final Extrinsic<BalanceTransfer> extrinsic;
 
-        public Transfer(Extrinsic<BalanceTransfer> extrinsic) {
+        public BalanceTransferRequest(Extrinsic<BalanceTransfer> extrinsic) {
             this.extrinsic = extrinsic;
         }
 
@@ -66,51 +68,14 @@ public class BalanceModule {
         }
     }
 
-    public static class TransferAll implements ExtrinsicRequest {
-        private static final ExtrinsicWriter<BalanceTransferAll> CODEC = new ExtrinsicWriter<>(
-                new BalanceTransferAllWriter()
-        );
-
-        private final Extrinsic<BalanceTransferAll> extrinsic;
-
-        public TransferAll(Extrinsic<BalanceTransferAll> extrinsic) {
-            this.extrinsic = extrinsic;
-        }
-
-        public Extrinsic<BalanceTransferAll> getExtrinsic() {
-            return extrinsic;
-        }
-
-        @Override
-        public ByteData encodeRequest() throws IOException {
-            ByteArrayOutputStream buf = new ByteArrayOutputStream();
-            ScaleCodecWriter writer = new ScaleCodecWriter(buf);
-            writer.write(CODEC, extrinsic);
-            return new ByteData(buf.toByteArray());
-        }
-
-        @Override
-        public String toString() {
-            return "Transfer{" +
-                    "extrinsic=" + extrinsic +
-                    '}';
-        }
-    }
 
     public static class TransferBuilder {
-        private Address from;
-        private Long nonce;
-        private DotAmount tip;
+        protected Address from;
+        protected Long nonce;
+        protected DotAmount tip;
 
-        protected final BalanceTransfer call;
-
-        public TransferBuilder(){
-            this(0);
-        }
-
-        protected TransferBuilder(int callIndex){
-            call = new BalanceTransfer(callIndex);
-        }
+        protected Address to;
+        protected DotAmount amount;
 
         /**
          *
@@ -132,7 +97,7 @@ public class BalanceModule {
          * @return builder
          */
         public TransferBuilder to(Address to) {
-            this.call.setDestination(to);
+            this.to=to;
             return this;
         }
 
@@ -142,7 +107,7 @@ public class BalanceModule {
          * @return builder
          */
         public TransferBuilder amount(DotAmount amount) {
-            this.call.setBalance(amount);
+            this.amount=amount;
             return this;
         }
 
@@ -172,24 +137,32 @@ public class BalanceModule {
          *
          * @return signed Transfer
          */
-        public Transfer build() {
+        public BalanceTransferRequest build() {
             Extrinsic.TransactionInfo tx = new Extrinsic.TransactionInfo();
             tx.setNonce(this.nonce);
             tx.setSender(this.from);
             tx.setTip(this.tip);
 
             Extrinsic<BalanceTransfer> extrinsic = new Extrinsic<>();
-            extrinsic.setCall(this.call);
+            extrinsic.setCall(new Transfer(amount,to));
             extrinsic.setTx(tx);
-            return new Transfer(extrinsic);
+            return new BalanceTransferRequest(extrinsic);
         }
 
     }
 
     public static final class TransferKeepAliveBuilder extends TransferBuilder {
 
-        public TransferKeepAliveBuilder() {
-            super(3);
+        public BalanceTransferRequest build() {
+            Extrinsic.TransactionInfo tx = new Extrinsic.TransactionInfo();
+            tx.setNonce(nonce);
+            tx.setSender(from);
+            tx.setTip(tip);
+
+            Extrinsic<BalanceTransfer> extrinsic = new Extrinsic<>();
+            extrinsic.setCall(new TransferKeepAlive(amount,to));
+            extrinsic.setTx(tx);
+            return new BalanceTransferRequest(extrinsic);
         }
     }
 
@@ -199,12 +172,8 @@ public class BalanceModule {
         private Long nonce;
         private DotAmount tip;
 
-        private final BalanceTransferAll call;
-
-        public TransferAllBuilder(){
-            call=new BalanceTransferAll();
-            tip = new DotAmount(BigInteger.ZERO, from.getNetwork());
-        }
+        private Address to;
+        private Boolean keepAlive;
 
         /**
          *
@@ -226,12 +195,12 @@ public class BalanceModule {
          * @return builder
          */
         public TransferAllBuilder to(Address to) {
-            this.call.setDestination(to);
+            this.to=to;
             return this;
         }
 
         public TransferAllBuilder keepAlive(Boolean keepAlive) {
-            this.call.setKeepAlive(keepAlive);
+            this.keepAlive=keepAlive;
             return this;
         }
 
@@ -261,16 +230,16 @@ public class BalanceModule {
          *
          * @return signed Transfer
          */
-        public TransferAll build() {
+        public BalanceTransferRequest build() {
             Extrinsic.TransactionInfo tx = new Extrinsic.TransactionInfo();
             tx.setNonce(this.nonce);
             tx.setSender(this.from);
             tx.setTip(this.tip);
 
-            Extrinsic<BalanceTransferAll> extrinsic = new Extrinsic<>();
-            extrinsic.setCall(this.call);
+            Extrinsic<BalanceTransfer> extrinsic = new Extrinsic<>();
+            extrinsic.setCall(new TransferAll(to,keepAlive));
             extrinsic.setTx(tx);
-            return new TransferAll(extrinsic);
+            return new BalanceTransferRequest(extrinsic);
         }
     }
 
